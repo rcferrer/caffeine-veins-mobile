@@ -4,21 +4,36 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { ProductProvider } from '@/context/ProductContext';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <AuthProvider>
+      <ProductProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <RootLayoutContent />
+          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+        </ThemeProvider>
+      </ProductProvider>
+    </AuthProvider>
+  );
+}
+
+function RootLayoutContent() {
+  const { user, isLoading } = useAuth();
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      {isLoading ? (
+        <Stack.Screen name="login" />
+      ) : user ? (
+        <Stack.Screen name="(tabs)" />
+      ) : (
+        <Stack.Screen name="login" />
+      )}
+    </Stack>
   );
 }
