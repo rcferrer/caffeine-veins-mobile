@@ -30,7 +30,11 @@ function RootLayoutContent() {
       {isLoading ? (
         <Stack.Screen name="login" />
       ) : user ? (
-        <Stack.Screen name="(tabs)" />
+        user.role === 'admin' ? (
+          <Stack.Screen name="(admin)" />
+        ) : (
+          <Stack.Screen name="(tabs)" />
+        )
       ) : (
         <Stack.Screen name="login" />
       )}

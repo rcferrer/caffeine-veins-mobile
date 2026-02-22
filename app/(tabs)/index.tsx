@@ -1,20 +1,27 @@
 import { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native';
 import { useProducts, Product, ProductSize } from '@/context/ProductContext';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'expo-router';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
+const IMAGES: Record<string, any> = {
+  'iced-milk-coffee': require('../../assets/images/products/iced-milk-coffee.png'),
+};
+
 
 export default function MenuScreen() {
   const { products, addToCart } = useProducts();
   const { user } = useAuth();
   const router = useRouter();
+  const colorScheme = useColorScheme();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  const categories = ['All', ...Array.from(new Set(products.map(p => p.category)))];
-  const filteredProducts = selectedCategory === 'All'
-    ? products
-    : products.filter(p => p.category === selectedCategory);
+  const categories = ['All', 'coffee', 'tea', 'meal', 'dessert'];
+  const filteredProducts = products.filter(p => p.available && (selectedCategory === 'All' || p.category.toLowerCase() === selectedCategory.toLowerCase()));
 
   const handleAddToCart = (product: Product, size: ProductSize) => {
     addToCart(product, size);
@@ -23,11 +30,12 @@ export default function MenuScreen() {
   };
 
   const getEmoji = (category: string) => {
-    switch (category) {
-      case 'Coffee': return '☕';
-      case 'Pastries': return '🥐';
-      case 'Food': return '🍔';
-      default: return '🛒';
+    switch (category.toLowerCase()) {
+      case 'coffee': return '☕';
+      case 'tea': return '🍵';
+      case 'meal': return '🍛';
+      case 'dessert': return '🍰';
+      default: return '⭐';
     }
   };
 
@@ -37,7 +45,17 @@ export default function MenuScreen() {
       onPress={() => setSelectedProduct(item)}
     >
       <View style={styles.productImage}>
-        <Text style={styles.productEmoji}>{getEmoji(item.category)}</Text>
+        {item.image ? (
+          item.image.startsWith('file://') || item.image.startsWith('http') ? (
+            <Image source={{ uri: item.image }} style={styles.productImg} />
+          ) : IMAGES[item.image] ? (
+            <Image source={IMAGES[item.image]} style={styles.productImg} />
+          ) : (
+            <Text style={styles.productEmoji}>{getEmoji(item.category)}</Text>
+          )
+        ) : (
+          <Text style={styles.productEmoji}>{getEmoji(item.category)}</Text>
+        )}
       </View>
       <View style={styles.productInfo}>
         <Text style={styles.productName}>{item.name}</Text>
@@ -55,7 +73,7 @@ export default function MenuScreen() {
           <Text style={styles.welcome}>Hello, {user?.username}!</Text>
         </View>
         <TouchableOpacity style={styles.cartButton} onPress={() => router.push('/cart')}>
-          <Text style={styles.cartIcon}>🛒</Text>
+          <IconSymbol size={24} name="cart.fill" color={Colors[colorScheme ?? 'light'].tint} />
           <View style={styles.cartBadge} />
         </TouchableOpacity>
       </View>
@@ -74,7 +92,7 @@ export default function MenuScreen() {
             >
               <Text style={styles.categoryEmoji}>{getEmoji(cat)}</Text>
               <Text style={[styles.categoryText, selectedCategory === cat && styles.categoryTextActive]}>
-                {cat}
+                {cat === 'All' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -141,11 +159,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   cartButton: {
-    position: 'relative',
     padding: 8,
-  },
-  cartIcon: {
-    fontSize: 24,
   },
   cartBadge: {
     position: 'absolute',
@@ -222,6 +236,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  productImg: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+  },
   productEmoji: {
     fontSize: 36,
   },
@@ -267,10 +286,12 @@ const styles = StyleSheet.create({
     top: 16,
     right: 16,
     padding: 8,
+    zIndex: 10,
   },
   closeButtonText: {
-    fontSize: 20,
-    color: '#999',
+    fontSize: 24,
+    color: '#666',
+    fontWeight: 'bold',
   },
   modalTitle: {
     fontSize: 24,

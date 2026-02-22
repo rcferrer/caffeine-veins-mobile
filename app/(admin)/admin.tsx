@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, TextInput, Alert, ScrollView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, TextInput, Alert, ScrollView, Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useProducts, Product, Order, ProductSize } from '@/context/ProductContext';
 import { useAuth } from '@/context/AuthContext';
+
+const CATEGORIES = ['coffee', 'tea', 'meal', 'dessert'];
 
 export default function AdminScreen() {
   const { products, orders, addProduct, updateProduct, deleteProduct, updateOrderStatus } = useProducts();
@@ -12,7 +15,8 @@ export default function AdminScreen() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    category: 'Coffee',
+    category: 'coffee',
+    image: '',
     size1Name: '',
     size1Price: '',
     size2Name: '',
@@ -26,7 +30,8 @@ export default function AdminScreen() {
     setFormData({
       name: '',
       description: '',
-      category: 'Coffee',
+      category: 'coffee',
+      image: '',
       size1Name: '16oz',
       size1Price: '',
       size2Name: '20oz',
@@ -44,6 +49,7 @@ export default function AdminScreen() {
       name: product.name,
       description: product.description,
       category: product.category,
+      image: product.image || '',
       size1Name: sizes[0]?.name || '',
       size1Price: sizes[0]?.price.toString() || '',
       size2Name: sizes[1]?.name || '',
@@ -52,6 +58,25 @@ export default function AdminScreen() {
       size3Price: sizes[2]?.price.toString() || '',
     });
     setProductModalVisible(true);
+  };
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      if (asset.fileSize && asset.fileSize > 500000) {
+        Alert.alert('Error', 'Image size must be less than 500KB');
+        return;
+      }
+      const filename = asset.fileName || asset.uri.split('/').pop() || 'product';
+      setFormData({ ...formData, image: filename });
+    }
   };
 
   const handleSave = async () => {
@@ -75,6 +100,7 @@ export default function AdminScreen() {
         name: formData.name,
         description: formData.description,
         category: formData.category,
+        image: formData.image,
         sizes,
       });
     } else {
@@ -82,6 +108,7 @@ export default function AdminScreen() {
         name: formData.name,
         description: formData.description,
         category: formData.category,
+        image: formData.image,
         sizes,
         available: true,
       });
@@ -96,6 +123,18 @@ export default function AdminScreen() {
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: () => deleteProduct(product.id) },
+      ]
+    );
+  };
+
+  const toggleAvailability = (product: Product) => {
+    const newStatus = product.available ? 'unavailable' : 'available';
+    Alert.alert(
+      'Change Availability',
+      `Mark "${product.name}" as ${newStatus}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Confirm', onPress: () => updateProduct(product.id, { available: !product.available }) },
       ]
     );
   };
@@ -123,8 +162,18 @@ export default function AdminScreen() {
   const renderProduct = ({ item }: { item: Product }) => (
     <View style={styles.card}>
       <View style={styles.cardInfo}>
-        <Text style={styles.cardTitle}>{item.name}</Text>
-        <Text style={styles.cardCategory}>{item.category}</Text>
+        <View style={styles.productHeader}>
+          <Text style={styles.cardTitle}>{item.name}</Text>
+          <TouchableOpacity 
+            style={[styles.availableBtn, item.available ? styles.availableBtnYes : styles.availableBtnNo]} 
+            onPress={() => toggleAvailability(item)}
+          >
+            <Text style={[styles.availableBtnText, item.available ? styles.availableBtnTextYes : styles.availableBtnTextNo]}>
+              {item.available ? 'Available' : 'Unavailable'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.cardCategory}>{item.category.charAt(0).toUpperCase() + item.category.slice(1)}</Text>
         <Text style={styles.cardDesc}>{item.description}</Text>
         <View style={styles.sizesRow}>
           {item.sizes.map((s, i) => (
@@ -242,6 +291,15 @@ export default function AdminScreen() {
               {editingProduct ? 'Edit Product' : 'Add Product'}
             </Text>
 
+            <Text style={styles.inputLabel}>Product Image</Text>
+            <TouchableOpacity style={styles.imagePickerBtn} onPress={pickImage}>
+              {formData.image ? (
+                <Text style={styles.imagePickerText}>{formData.image}</Text>
+              ) : (
+                <Text style={styles.imagePickerText}>Tap to upload image (max 500KB)</Text>
+              )}
+            </TouchableOpacity>
+
             <Text style={styles.inputLabel}>Name *</Text>
             <TextInput
               style={styles.input}
@@ -260,12 +318,19 @@ export default function AdminScreen() {
             />
 
             <Text style={styles.inputLabel}>Category</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.category}
-              onChangeText={t => setFormData({ ...formData, category: t })}
-              placeholder="Coffee"
-            />
+            <View style={styles.categoryRow}>
+              {CATEGORIES.map(cat => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.categoryBtn, formData.category === cat && styles.categoryBtnActive]}
+                  onPress={() => setFormData({ ...formData, category: cat })}
+                >
+                  <Text style={[styles.categoryBtnText, formData.category === cat && styles.categoryBtnTextActive]}>
+                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
             <Text style={styles.sectionTitle}>Sizes & Prices</Text>
             
@@ -355,6 +420,13 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 12 },
   cardInfo: { flex: 1 },
   cardTitle: { fontSize: 17, fontWeight: '700', color: '#222' },
+  productHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  availableBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  availableBtnYes: { backgroundColor: '#d4edda' },
+  availableBtnNo: { backgroundColor: '#f8d7da' },
+  availableBtnText: { fontSize: 11, fontWeight: '700' },
+  availableBtnTextYes: { color: '#155724' },
+  availableBtnTextNo: { color: '#721c24' },
   cardCategory: { fontSize: 12, color: '#6F4E37', marginTop: 2 },
   cardDesc: { fontSize: 13, color: '#666', marginTop: 4 },
   sizesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
@@ -382,10 +454,18 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' },
   modalTitle: { fontSize: 22, fontWeight: 'bold', color: '#222', marginBottom: 20 },
+  imagePickerBtn: { width: '100%', height: 150, borderRadius: 12, borderWidth: 2, borderColor: '#ddd', borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', marginBottom: 16, overflow: 'hidden', backgroundColor: '#f9f9f9' },
+  imagePreview: { width: '100%', height: '100%', resizeMode: 'cover' },
+  imagePickerText: { fontSize: 14, color: '#999' },
   inputLabel: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 6, marginTop: 12 },
   input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, fontSize: 15, backgroundColor: '#f9f9f9' },
   textArea: { height: 80, textAlignVertical: 'top' },
   sectionTitle: { fontSize: 16, fontWeight: '600', color: '#333', marginTop: 20, marginBottom: 4 },
+  categoryRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  categoryBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: '#ddd' },
+  categoryBtnActive: { backgroundColor: '#6F4E37', borderColor: '#6F4E37' },
+  categoryBtnText: { fontSize: 14, color: '#666', fontWeight: '600' },
+  categoryBtnTextActive: { color: '#fff' },
   sizeRow: { flexDirection: 'row', gap: 10 },
   sizeInput: { flex: 1 },
   modalButtons: { flexDirection: 'row', gap: 12, marginTop: 24, marginBottom: 20 },

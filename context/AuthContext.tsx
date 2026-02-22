@@ -47,7 +47,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const getUsers = async (): Promise<StoredUser[]> => {
     const usersData = await AsyncStorage.getItem(USERS_KEY);
-    return usersData ? JSON.parse(usersData) : [];
+    if (!usersData) {
+      const defaultAdmin: StoredUser = { username: 'gengar', password: 'pikapika', role: 'admin' };
+      await AsyncStorage.setItem(USERS_KEY, JSON.stringify([defaultAdmin]));
+      return [defaultAdmin];
+    }
+    return JSON.parse(usersData);
   };
 
   const saveUsers = async (users: StoredUser[]) => {

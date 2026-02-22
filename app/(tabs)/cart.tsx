@@ -1,9 +1,11 @@
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useProducts, CartItem } from '@/context/ProductContext';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
 
 export default function CartScreen() {
   const { cart, updateQuantity, placeOrder, clearCart } = useProducts();
+  const { user } = useAuth();
   const router = useRouter();
 
   const total = cart.reduce((sum, item) => sum + item.selectedSize.price * item.quantity, 0);
@@ -19,7 +21,7 @@ export default function CartScreen() {
         {
           text: 'Place Order',
           onPress: async () => {
-            await placeOrder('Customer');
+            await placeOrder(user?.username || 'Customer');
             Alert.alert('Success', 'Order placed successfully!', [
               { text: 'OK', onPress: () => router.push('/') }
             ]);

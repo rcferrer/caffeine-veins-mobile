@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'expo-router';
 
@@ -7,7 +7,6 @@ export default function LoginScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'admin' | 'customer'>('customer');
   const [loading, setLoading] = useState(false);
   const { login, signup } = useAuth();
   const router = useRouter();
@@ -31,8 +30,8 @@ export default function LoginScreen() {
           Alert.alert('Login Failed', result.error || 'Invalid credentials');
         }
       } else {
-        console.log('Attempting signup with:', username, role);
-        const result = await signup(username, password, role);
+        console.log('Attempting signup with:', username);
+        const result = await signup(username, password, 'customer');
         console.log('Signup result:', result);
         if (result.success) {
           router.replace('/');
@@ -60,6 +59,7 @@ export default function LoginScreen() {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.content}>
+        <Image source={require('../assets/images/coffee_logo.png')} style={styles.logo} />
         <Text style={styles.title}>Caffeine Veins</Text>
         <Text style={styles.subtitle}>{isLogin ? 'Welcome Back' : 'Create Account'}</Text>
 
@@ -84,30 +84,6 @@ export default function LoginScreen() {
             placeholderTextColor="#999"
             secureTextEntry
           />
-
-          {!isLogin && (
-            <>
-              <Text style={styles.label}>Role</Text>
-              <View style={styles.roleContainer}>
-                <TouchableOpacity
-                  style={[styles.roleButton, role === 'customer' && styles.roleButtonActive]}
-                  onPress={() => setRole('customer')}
-                >
-                  <Text style={[styles.roleText, role === 'customer' && styles.roleTextActive]}>
-                    Customer
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.roleButton, role === 'admin' && styles.roleButtonActive]}
-                  onPress={() => setRole('admin')}
-                >
-                  <Text style={[styles.roleText, role === 'admin' && styles.roleTextActive]}>
-                    Admin
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
 
           <TouchableOpacity 
             style={[styles.submitButton, loading && styles.submitButtonDisabled]} 
@@ -143,6 +119,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
   },
+  logo: {
+    width: 120,
+    height: 120,
+    alignSelf: 'center',
+    marginBottom: 0,
+    borderRadius: 60,
+  },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
@@ -163,7 +146,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 8,
+    marginBottom: 0,
   },
   input: {
     borderWidth: 1,
